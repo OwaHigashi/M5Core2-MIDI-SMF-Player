@@ -68,10 +68,14 @@ int MidiPort_open()
 ```
 - プレイリストは次の変数に保存されます
 
-```char songFilenames[MAX_SONGS][MAX_FILENAME_LENGTH]; // 曲のファイル名を格納する配列```
+```
+char songFilenames[MAX_SONGS][MAX_FILENAME_LENGTH]; // 曲のファイル名を格納する配列
+```
 
 - 現在再生しているファイル名へのポインタは次に保存されています
-```char *currentFilename = NULL;                       // 現在の曲のファイル名```
+```
+char *currentFilename = NULL;                       // 現在の曲のファイル名
+```
 
 - 新たに```void scanSongs()```関数を追加しています
 
