@@ -38,8 +38,7 @@ char *currentFilename = NULL;                       // 現在の曲のファイ�
 HardwareSerial MIDI_SERIAL(2); // UART2 を使用
 int MidiPort_open()
 {
-  MIDI_SERIAL.begin(31250, SERIAL_8N1, -1, 32); // Core2 MIDI 出力をピン32で初期化
-  MIDI_SERIAL.begin(D_MIDI_PORT_BPS);
+  MIDI_SERIAL.begin(D_MIDI_PORT_BPS, SERIAL_8N1, -1, 32); // Core2 MIDI 出力をピン32で初期化
   return (0);
 }
 void MidiPort_close()
