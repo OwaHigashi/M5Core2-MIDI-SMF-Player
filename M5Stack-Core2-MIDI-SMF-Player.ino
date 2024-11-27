@@ -14,6 +14,7 @@
 //
 // 尾和東@Pococha技術枠
 // necobit版SMFプレーヤーをUNIT-SYNTHを装着したCore2で演奏するように改造
+// さらに、任意のファイル名を受け付けてプレイリストを生成するように修正
 
 #include "common.h"
 #include "SmfSeq.h"
