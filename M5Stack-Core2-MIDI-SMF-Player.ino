@@ -176,8 +176,8 @@ unsigned int SmfFileAccessSize()
 }
 
 //----------------------------------------------------------------------
-#define D_CH_OFFSET_PIN 3 // チャンネル番号オフセット（eVY1のGM音源としての演奏）
-#define D_STATUS_LED 10   // 状態表示LED
+// #define D_CH_OFFSET_PIN 3 // チャンネル番号オフセット（eVY1のGM音源としての演奏）
+// #define D_STATUS_LED 10   // 状態表示LED
 
 int playdataCnt = 0; // 選曲番号
 
@@ -188,18 +188,18 @@ unsigned int sLedPattern = 0x0f0f;
 IntervalCheck sUpdateScreenInterval(500, true);
 
 // SMFファイル名生成
-char *makeFilename()
+char *makeFilename(int seq)
 {
-  if (songCount == 0)
-  {
+  if (songCount == 0) {
     return NULL; // 曲がない場合
   }
-  char *filename = songFilenames[playdataCnt];
-  playdataCnt++;
-  if (playdataCnt >= songCount)
-  {
+  playdataCnt += seq;
+  if (playdataCnt >= songCount) {
     playdataCnt = 0;
+  } else if (playdataCnt < 0) {
+    playdataCnt = songCount-1;
   }
+  char *filename = songFilenames[playdataCnt];
   return filename;
 }
 
@@ -323,19 +323,14 @@ void backscreen()
 void setup()
 {
   M5.begin();
-
   // 最初に初期化関数を呼び出します。
   lcd.init();
-
   lcd.setRotation(1);
-
   // バックライトの輝度を 0～255 の範囲で設定します。
   lcd.setBrightness(255);
-
   lcd.clear(TFT_BLACK);
-
   Serial.begin(115200);
-  pinMode(D_CH_OFFSET_PIN, INPUT_PULLUP);
+//  pinMode(D_CH_OFFSET_PIN, INPUT_PULLUP);
 
   lcd.println(F("Initializing SD card..."));
   if (!SD.begin())
@@ -368,7 +363,7 @@ void setup()
   int chNoOffset = 0;
 
   // SMFファイル読込
-  currentFilename = makeFilename();
+  currentFilename = makeFilename(0);
   if (currentFilename == NULL)
   {
     lcd.println("No SMF files to play.");
@@ -384,6 +379,7 @@ void setup()
 
 int prePlayButtonStatus = HIGH;
 int preFfButtonStatus = HIGH;
+int preBwButtonStatus = HIGH;
 void loop()
 {
   int Ret;
@@ -422,7 +418,7 @@ void loop()
 
         pseqTbl = SmfSeqInit(ZTICK);
         // SMFファイル読込
-        currentFilename = makeFilename();
+        currentFilename = makeFilename(1);
         if (currentFilename == NULL)
         {
           lcd.println("No more SMF files to play.");
@@ -467,15 +463,12 @@ void loop()
     prePlayButtonStatus = buttonPlayStatus;
 
     int buttonFfStatus = M5.BtnC.wasPressed();
-    if (preFfButtonStatus != buttonFfStatus)
-    {
+    if (preFfButtonStatus != buttonFfStatus) {
       // スイッチ状態が変化していた場合
-      if (preFfButtonStatus == LOW)
-      {
+      if (preFfButtonStatus == LOW) {
         // スイッチ状態がONの場合
         bool playing = false;
-        if (SmfSeqGetStatus(pseqTbl) != SMF_STAT_STOP)
-        {
+        if (SmfSeqGetStatus(pseqTbl) != SMF_STAT_STOP) {
           // 演奏中なら演奏停止
           SmfSeqStop(pseqTbl);
           // 発音中全キーノートオフ
@@ -485,19 +478,14 @@ void loop()
           // ファイルクローズ
           SmfSeqEnd(pseqTbl);
           playing = true;
-        }
-        else
-        {
+        } else {
           playing = false;
         }
-
         int chNoOffset = 0;
-
         pseqTbl = SmfSeqInit(ZTICK);
         // SMFファイル読込
-        currentFilename = makeFilename();
-        if (currentFilename == NULL)
-        {
+        currentFilename = makeFilename(1);
+        if (currentFilename == NULL) {
           lcd.println("No more SMF files to play.");
           return;
         }
@@ -506,8 +494,7 @@ void loop()
         Ret = SmfSeqAllNoteOff(pseqTbl);
         // トラックテーブルリセット
         SmfSeqPlayResetTrkTbl(pseqTbl);
-        if (playing == true)
-        {
+        if (playing == true) {
           // 演奏開始
           SmfSeqStart(pseqTbl);
         }
@@ -515,32 +502,65 @@ void loop()
     }
     // スイッチ状態保持
     preFfButtonStatus = buttonFfStatus;
+
+    int buttonBwStatus = M5.BtnA.wasPressed();
+    if (preBwButtonStatus != buttonBwStatus) {
+      // スイッチ状態が変化していた場合
+      if (preBwButtonStatus == LOW) {
+        // スイッチ状態がONの場合
+        bool playing = false;
+        if (SmfSeqGetStatus(pseqTbl) != SMF_STAT_STOP) {
+          // 演奏中なら演奏停止
+          SmfSeqStop(pseqTbl);
+          // 発音中全キーノートオフ
+          Ret = SmfSeqAllNoteOff(pseqTbl);
+          // トラックテーブルリセット
+          SmfSeqPlayResetTrkTbl(pseqTbl);
+          // ファイルクローズ
+          SmfSeqEnd(pseqTbl);
+          playing = true;
+        } else {
+          playing = false;
+        }
+        int chNoOffset = 0;
+        pseqTbl = SmfSeqInit(ZTICK);
+        // SMFファイル読込
+        currentFilename = makeFilename(-1);
+        if (currentFilename == NULL) {
+          lcd.println("No more SMF files to play.");
+          return;
+        }
+        SmfSeqFileLoadWithChNoOffset(pseqTbl, currentFilename, chNoOffset);
+        // 発音中全キーノートオフ
+        Ret = SmfSeqAllNoteOff(pseqTbl);
+        // トラックテーブルリセット
+        SmfSeqPlayResetTrkTbl(pseqTbl);
+        if (playing == true) {
+          // 演奏開始
+          SmfSeqStart(pseqTbl);
+        }
+      }
+    }
+    // スイッチ状態保持
+    preBwButtonStatus = buttonBwStatus;
   }
 
   // 状態表示更新
-  if (SmfSeqGetStatus(pseqTbl) != SMF_STAT_STOP)
-  {
-    if (sStatusLedCheckInterval.check() == true)
-    {
+  if (SmfSeqGetStatus(pseqTbl) != SMF_STAT_STOP) {
+    if (sStatusLedCheckInterval.check() == true) {
       unsigned int led = sLedPattern & 0x0001;
-      if (led > 0)
-      {
+      if (led > 0) {
         // digitalWrite( D_STATUS_LED, HIGH );
-      }
-      else
-      {
+      } else {
         // digitalWrite( D_STATUS_LED, LOW );
       }
       sLedPattern = (sLedPattern >> 1) | (led << 15);
     }
-  }
-  else
-  {
+  } else {
     // digitalWrite( D_STATUS_LED, LOW );
   }
 
-  if (sUpdateScreenInterval.check() == true)
-  {
+  if (sUpdateScreenInterval.check() == true) {
     updateScreen();
   }
 }
